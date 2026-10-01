@@ -1,0 +1,19 @@
+# R / Positron / Quarto
+.Rproj.user/
+.Rhistory
+.RData
+.quarto/
+*_files/
+
+# Not shared
+extra/
+_archive/
+cache/
+tables/
+sim_supplement.qmd
+sim_supplement.html
+CLAUDE.md
+.claude/
+
+# Derived by 01_build_long_data.R
+sim_res/*.rds
