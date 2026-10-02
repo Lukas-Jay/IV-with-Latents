@@ -15,8 +15,7 @@ The paper treats a psychological experiment as a randomized encouragement design
 ## Files
 
 ```
-run_all.R                 regenerates all tables and figures from the cached results
-00_simulate.R             stage 0: the Monte Carlo study (several hours)
+run_all.R                 stage 0 (switched off) + stages 1-3: all tables and figures
 01_build_long_data.R      stage 1: wide results -> long format
 02_tables.R               stage 2: summaries and the appendix tables
 03_figures.R              stage 3: the manuscript figures
@@ -40,9 +39,9 @@ source("run_all.R")
 
 This rebuilds every table and figure from the cached results in `sim_res/`, which takes a few minutes. The tables and figures are written to the folder set by `paper_dir` in `functions/shared_constants.R`. Change it if the manuscript folder is not next to this one.
 
-To rerun the simulation itself, set `RUN_SIMULATION <- TRUE` in `run_all.R` or source `00_simulate.R`. Expect several hours on six cores. `N_ITER` and `N_WORKERS` are set at the top of `00_simulate.R`. The results do not depend on the number of workers: `future.seed = TRUE` gives every replication its own random-number stream.
+To rerun the simulation itself, change `if (FALSE)` to `if (TRUE)` in `run_all.R`. Expect several hours on six cores. `N_ITER` and `N_WORKERS` are set at the top of that block. The results do not depend on the number of workers: `future.seed = TRUE` gives every replication its own random-number stream.
 
-Requirements: R 4.6.1 with data.table 1.18.4, lavaan 0.7.2, ivreg 0.6.8, future.apply 1.20.2, progressr 1.0.0, ggplot2 4.0.3, patchwork 1.3.2, ggh4x 0.3.1 and scales 1.4.0. `00_simulate.R` writes the full session information to `sim_res/session_info.txt`.
+Requirements: R 4.6.1 with data.table 1.18.4, lavaan 0.7.2, ivreg 0.6.8, future.apply 1.20.2, progressr 1.0.0, ggplot2 4.0.3, patchwork 1.3.2, ggh4x 0.3.1 and scales 1.4.0. The simulation block writes the full session information to `sim_res/session_info.txt`.
 
 ## Quick start: one dataset
 
@@ -56,7 +55,7 @@ source("functions/estimators/anchor_wald.R")
 
 set.seed(1)
 sim <- simulate_data(n = 2000)          # baseline: all assumptions hold
-dat <- sim$A                            # gold anchor I0 + 9 items, Z, Y
+dat <- sim$A                            # clean anchor I0 + 9 items, Z, Y
 unlist(sim$truth_A)                     # ATE_I0 = theta_I0, ATE_X_scaled = theta_SD
 
 scores_I0 <- fit_factor_scores(dat, metric = "I0")
@@ -75,19 +74,19 @@ Each scenario switches on the terms of one violation and leaves everything else 
 | `all_clean` | All clean | – |
 | `orthogonal_IUY` | Indep. U_j → I_j, Y | – |
 | `nosh_violated` | NOSH violated | A4(b) no simultaneous heterogeneity |
-| `anchor_nosh_violated` | Anchor-NOSH violated | A6(b) item NOSH at the anchor |
 | `orthogonal_IUX` | Indep. U_j → I_j, X | A8 no X–I confounding |
 | `DIF_in_z` | DIF by Z | A5 measurement exclusion |
 | `one_confounder` | Shared U → I, Y | A7 local independence |
 | `two_more_factors` | Two more factors | A7 local independence |
+| `item_nosh_violated` | Item-NOSH violated | A6(b) item NOSH |
 
-Every dataset has a clean gold anchor (view A). Five scenarios also have a twin, `<name>_itemAnchor`. It estimates the same dataset with the first affected item as the anchor (view B), so that the violation sits at the anchor itself.
+Every dataset has a clean anchor (view A). Six scenarios also have a contaminated-anchor twin, `<name>_itemAnchor`. It estimates the same dataset with the first affected item as the anchor (view B), so that the violation sits at the anchor itself.
 
-The scenario `orthogonal_IUX_loading` is **not reported in the manuscript**. It is a check that A8 can be broken through the loading channel alone.
+The scenario `orthogonal_IUX_loading` is **not reported in the manuscript** and is off by default. It is a check that A8 can be broken through the loading channel alone; switch it on with `run_simulation_study(..., include_check = TRUE)`.
 
 ## What the manuscript reports
 
-The manuscript reports the three estimators above on θ_I0 and θ_SD, for the eight scenarios and five twins. The code also computes quantities the manuscript does not report. They are tagged `[not in manuscript]` in the code:
+The manuscript reports the three estimators above on θ_I0 and θ_SD, for the eight scenarios and six twins. The code also computes quantities the manuscript does not report. They are tagged `[not in manuscript]` in the code:
 
 - `functions/estimators/other_estimators.R`:
   - manifest IV and OLS on the true latent `X`;

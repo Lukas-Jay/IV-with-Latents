@@ -1,18 +1,19 @@
 # simulate_data.R
 # The data-generating process: one dataset of an encouragement design
 # Z -> X -> Y in which the latent treatment X is measured by K continuous items
-# plus a gold anchor. The code follows the structural model of the manuscript
+# plus a clean anchor. The code follows the structural model of the manuscript
 # and uses its symbols:
 #
 #   X_i  = beta_Xi Z_i + pi_X U_i + sum_j pi_Xj U_ji + eps_Xi
 #   Y_i  = beta_Yi X_i + pi_Y U_i + pi_YS U_Si + sum_j pi_Yj U_ji + eps_Yi
-#   I_ji = nu_j + dnu_j Z_i + (lambda_j + dlambda_j Z_i)(1 + cv E_ji) X_i
+#   I_ji = nu_j + dnu_j Z_i + (lambda_j + dlambda_j Z_i)(1 + cv E_ji + kappa_Cj c_Xi) X_i
 #          + pi_j U_(j)i + kappa_j U_(j)i Xt_i + eps_ji
-#   I_0i = nu_0 + lambda_0 [1 + cv E_0i + kappa_0 (beta_Xi - beta_X)/sd_beta_X] X_i
-#          + eps_0i
+#   I_0i = nu_0 + lambda_0 (1 + cv E_0i) X_i + eps_0i
 #
-# with Xt = (X - mu_X) / sigma_X. U_(j) is the variable that contaminates item j:
+# with Xt = (X - mu_X) / sigma_X and c_X = (beta_Xi - beta_X) / sd_beta_X the
+# standardized compliance deviation. U_(j) is the variable that contaminates item j:
 # its own U_j, the shared U_S, one of the nuisance factors U_A / U_B, or none.
+# kappa_Cj is nonzero only in the item NOSH scenario.
 # The slopes (beta_Xi, beta_Yi) and the loadings vary across persons, so no
 # effect is assumed constant. A scenario switches on only the terms of its
 # violation; with the default arguments every scenario term is zero (the
@@ -24,8 +25,8 @@
 # loading heterogeneity has Corr(I_j, X) = lambda_std_j.
 #
 # The dataset is returned in two views:
-#   A: the gold anchor as I0 + items 2..K (item 1 dropped) as I1..I(K-1)
-#   B: the first affected item as I0 + the other K - 1 items (no gold anchor);
+#   A: the clean anchor as I0 + items 2..K (item 1 dropped) as I1..I(K-1)
+#   B: the first affected item as I0 + the other K - 1 items (no clean anchor);
 #      used for the designs in which the anchor itself carries the violation
 # Each view comes with its population truths, computed in closed form from the
 # item parameters of this dataset:
@@ -60,16 +61,14 @@ simulate_data <- function(
   sd_eps_I_max    = 1.5,
   cv_lambda       = 0.12, # loading heterogeneity: lambda_j (1 + cv E_ji)
 
-  # --- gold anchor ------------------------------------------------------------
+  # --- clean anchor -----------------------------------------------------------
   lambda_std_0 = 0.75,    # target standardized loading, fixed; the anchor's loading
-                          # varies across persons through cv_lambda (and kappa_0)
+                          # varies across persons through cv_lambda
   sd_eps_0 = 1,           # anchor error SD
   nu_0     = 0,           # anchor intercept
-  kappa_0  = 0,           # anchor loading moderated by the standardized compliance
-                          # deviation, relative to lambda_0; nonzero violates A6(b)
 
   # --- affected items ---------------------------------------------------------
-  affected   = c("none", "U_item", "U_S", "U_AB", "DIF"),
+  affected   = c("none", "U_item", "U_S", "U_AB", "DIF", "NOSH"),
   n_affected = 0,         # number of affected items (the last n_affected of K)
   n_A        = 5,         # U_AB: affected items on U_A; the rest are on U_B
   pi_I       = c(0.7, 0.21),  # U_(j) -> I_j intercept: pi_j ~ N(mean, sd)
@@ -83,6 +82,8 @@ simulate_data <- function(
   dif_nu         = 0,     # DIF by Z: intercept shift at Z = 1
   dif_lambda_std = 0,     # DIF by Z: standardized-loading shift at Z = 1
   dif_lambda_std_cap = 0.95, # cap of the shifted standardized loading
+  kappa_C    = c(0, 0),   # item NOSH: loading moderated by compliance, relative to
+                          # lambda_j: kappa_Cj ~ N(mean, sd); violates A6(b)
 
   view_B = FALSE          # also return view B (first affected item as I0)
 ) {
@@ -100,7 +101,8 @@ simulate_data <- function(
       U_item = "U_item",
       U_S    = "U_S",
       U_AB   = c(rep("U_A", n_A), rep("U_B", n_affected - n_A)),
-      DIF    = "DIF")
+      DIF    = "DIF",
+      NOSH   = "NOSH")
   }
   has_U <- type %in% c("U_item", "U_S", "U_A", "U_B")
 
@@ -111,6 +113,9 @@ simulate_data <- function(
   # pi_j and kappa_j are drawn for every item and used only where U_(j) exists
   pi_j    <- ifelse(has_U, pi_I[1]    + pi_I[2]    * rnorm(K), 0)
   kappa_j <- ifelse(has_U, kappa_I[1] + kappa_I[2] * rnorm(K), 0)
+  # kappa_Cj is drawn only in the item NOSH scenario
+  kappa_Cj <- if (affected == "NOSH")
+    ifelse(type == "NOSH", kappa_C[1] + kappa_C[2] * rnorm(K), 0) else rep(0, K)
 
   # ===========================================================================
   # 2. Population moments of X and raw loadings
@@ -135,7 +140,7 @@ simulate_data <- function(
   dlambda   <- ifelse(is_DIF, lambda_Z1 - lambda, 0)
 
   items <- data.table(j = 1:K, type, lambda_std, sd_eps_I, nu, lambda,
-                      dnu, dlambda, pi = pi_j, kappa = kappa_j,
+                      dnu, dlambda, pi = pi_j, kappa = kappa_j, kappa_C = kappa_Cj,
                       pi_Xj = ifelse(type == "U_item", pi_Xj, 0),
                       pi_Yj = ifelse(type == "U_item", pi_Yj, 0))
 
@@ -167,19 +172,19 @@ simulate_data <- function(
     rnorm(n, sd = sd_eps_Y)
 
   # ===========================================================================
-  # 5. f_j for the K items and f_0 for the gold anchor
+  # 5. f_j for the K items and f_0 for the clean anchor
   # ===========================================================================
   Xt <- if (kappa_centred) (X - mu_X) / sigma_X else X / sigma_X
 
   I <- vapply(1:K, function(j) {
     U_j <- switch(type[j], U_item = U_item[, j], U_S = U_S, U_A = U_A, U_B = U_B, 0)
     nu[j] + dnu[j] * Z +
-      (lambda[j] + dlambda[j] * Z) * (1 + cv_lambda * rnorm(n)) * X +
+      (lambda[j] + dlambda[j] * Z) * (1 + cv_lambda * rnorm(n) + kappa_Cj[j] * c_X) * X +
       pi_j[j] * U_j + kappa_j[j] * U_j * Xt +
       rnorm(n, sd = sd_eps_I[j])
   }, numeric(n))
 
-  I0_gold <- nu_0 + lambda_0 * (1 + cv_lambda * rnorm(n) + kappa_0 * c_X) * X +
+  I0_clean <- nu_0 + lambda_0 * (1 + cv_lambda * rnorm(n)) * X +
     rnorm(n, sd = sd_eps_0)
 
   # ===========================================================================
@@ -203,9 +208,9 @@ simulate_data <- function(
     TRUE_IV_I0   = cov_ZY / cov_ZI0       # Cov(Z, Y) / Cov(Z, I0)
   )
 
-  # View A: gold anchor + items 2..K
-  view_A  <- make_view(I0_gold, 2:K)
-  truth_A <- truth(lambda_0, lambda_0 * beta_X + lambda_0 * kappa_0 * sd_beta_X)
+  # View A: clean anchor + items 2..K
+  view_A  <- make_view(I0_clean, 2:K)
+  truth_A <- truth(lambda_0, lambda_0 * beta_X)
 
   # View B: the first affected item p as I0; under DIF its average loading is
   # the mean over the two arms
@@ -214,7 +219,8 @@ simulate_data <- function(
     p <- aff_idx[1]
     view_B_dt <- make_view(I[, p], setdiff(1:K, p))
     truth_B   <- truth(lambda[p] + dlambda[p] / 2,
-                       (lambda[p] + dlambda[p]) * beta_X + dnu[p])
+                       (lambda[p] + dlambda[p]) * beta_X + dnu[p] +
+                         lambda[p] * kappa_Cj[p] * sd_beta_X)
   }
 
   # items, lambda_0, mu_X, sigma_X: for inspecting a dataset; the simulation

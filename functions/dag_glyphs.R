@@ -86,13 +86,13 @@ SKELETON <- data.table(
 
 # Confounder slots sit *between* the indicator row and the causal row, so the
 # violating edges stay short instead of sweeping across the whole glyph. Right
-# slot = gold anchor (contamination at a non-anchor item), left slot = promoted
+# slot = clean anchor (contamination at a non-anchor item), left slot = contaminated
 # anchor (contamination at I0). The pair reads as a mirror image.
 UR <- c(nx =  0.40, ny = 0.38)
 UL <- c(nx = -0.40, ny = 0.38)
 
 EXTRA <- rbindlist(list(
-  # --- gold anchor: the confounder hits Ij, away from the boxed anchor ------
+  # --- clean anchor: the confounder hits Ij, away from the boxed anchor -----
   data.table(scenario = "orthogonal_IUY",
              node = "Uj", nx = UR[1], ny = UR[2], lab = "italic(U)[j]"),
   data.table(scenario = "orthogonal_IUX",
@@ -104,10 +104,10 @@ EXTRA <- rbindlist(list(
   data.table(scenario = "two_more_factors",
              node = c("F1", "F2"), nx = c(0.00, 0.28), ny = ROW[["factor"]],
              lab = c("italic(F)[1]", "italic(F)[2]")),
-  # --- promoted anchor: the same confounder now hits I0 ---------------------
-  # Independent confounders: the promoted item brings its own U0 (left slot),
-  # and every other item keeps its own Uj in the gold glyph's right slot. The
-  # promoted glyph is its gold twin plus U0.
+  # --- contaminated anchor: the same confounder now hits I0 -----------------
+  # Independent confounders: the contaminated anchor brings its own U0 (left slot),
+  # and every other item keeps its own Uj in the clean-anchor glyph's right slot. The
+  # contaminated-anchor glyph is its clean twin plus U0.
   data.table(scenario = "orthogonal_IUY_itemAnchor",
              node = c("U0", "Uj"), nx = c(UL[1], UR[1]), ny = c(UL[2], UR[2]),
              lab = c("italic(U)[0]", "italic(U)[j]")),
@@ -116,8 +116,8 @@ EXTRA <- rbindlist(list(
              lab = c("italic(U)[0]", "italic(U)[j]")),
   data.table(scenario = "one_confounder_itemAnchor",
              node = "US", nx = UL[1], ny = UL[2], lab = "italic(U)[S]"),
-  # F1 sits between I0 and Ij because the promoted anchor keeps loading on the
-  # factor it shares with the rest of its block; F2 stays where the gold glyph
+  # F1 sits between I0 and Ij because the contaminated anchor keeps loading on the
+  # factor it shares with the rest of its block; F2 stays where the clean-anchor glyph
   # has it.
   data.table(scenario = "two_more_factors_itemAnchor",
              node = c("F1", "F2"), nx = c(-0.14, 0.28), ny = ROW[["factor"]],
@@ -130,7 +130,7 @@ EXTRA <- rbindlist(list(
 EXTRA_EDGES <- rbindlist(list(
   data.table(scenario = "all_clean",
              from = character(), to = character(), curve = numeric()),
-  # --- gold anchor ---------------------------------------------------------
+  # --- clean anchor --------------------------------------------------------
   data.table(scenario = "orthogonal_IUY",   from = c("Uj", "Uj"),
              to = c("Ij", "Y")),
   data.table(scenario = "orthogonal_IUX",   from = c("Uj", "Uj"),
@@ -140,7 +140,7 @@ EXTRA_EDGES <- rbindlist(list(
   data.table(scenario = "two_more_factors", from = c("F1", "F2"),
              to = c("Ij", "Ik")),
   data.table(scenario = "DIF_in_z",         from = "Z", to = "Ij"),
-  # --- promoted anchor: same picture, mirrored onto I0 ---------------------
+  # --- contaminated anchor: same picture, mirrored onto I0 -----------------
   data.table(scenario = "orthogonal_IUY_itemAnchor",
              from = c("U0", "U0", "Uj", "Uj"), to = c("I0", "Y", "Ij", "Y")),
   data.table(scenario = "orthogonal_IUX_itemAnchor",
@@ -150,7 +150,7 @@ EXTRA_EDGES <- rbindlist(list(
              curve = c(0, -0.16, 0)),
   data.table(scenario = "two_more_factors_itemAnchor",
              from = c("F1", "F1", "F2"), to = c("I0", "Ij", "Ik")),
-  # Every item has DIF, the promoted one included.
+  # Every item has DIF, the contaminated anchor included.
   data.table(scenario = "DIF_in_z_itemAnchor",         from = c("Z", "Z"),
              to = c("I0", "Ij"))
 ), fill = TRUE)
@@ -158,17 +158,21 @@ EXTRA_EDGES[is.na(curve), curve := 0]
 
 # NOSH violations are covariances between *coefficients*, so they attach to the
 # midpoints of two skeleton edges, not to nodes: a dashed bidirected arc from
-# the Z->X edge to the X->Y edge (A4b), or to the X->I0 loading (A6b, item
-# NOSH at the anchor). Positive
-# curvature bows right of the direction of travel, so the A4b arc runs below
-# the causal row: above it sits the X <- U -> Y confounder.
+# the Z->X edge to the X->Y edge (A4b), or to an X->I loading (A6b, item NOSH:
+# X->Ij with a clean anchor, X->I0 and X->Ij with a contaminated one).
+# Positive curvature bows right of the direction of travel, so the A4b arc runs
+# below the causal row: above it sits the X <- U -> Y confounder. The arc to
+# X->Ij is straight: it already passes below X, and any curve crosses X.
 EDGE_ARCS <- rbindlist(list(
   data.table(scenario = "nosh_violated",
              a_from = "Z", a_to = "X", b_from = "X", b_to = "Y",
              curve = 0.55),
-  data.table(scenario = "anchor_nosh_violated",
-             a_from = "Z", a_to = "X", b_from = "X", b_to = "I0",
-             curve = 0.45)
+  data.table(scenario = "item_nosh_violated",
+             a_from = "Z", a_to = "X", b_from = "X", b_to = "Ij",
+             curve = 0),
+  data.table(scenario = "item_nosh_violated_itemAnchor",
+             a_from = "Z", a_to = "X", b_from = "X", b_to = c("I0", "Ij"),
+             curve = c(0.45, 0))
 ))
 
 # A scenario with no entry anywhere would silently draw a clean skeleton, which

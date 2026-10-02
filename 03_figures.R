@@ -5,14 +5,14 @@
 # Output: <paper_dir>/Simulation Results/
 #   SimFigure1.pdf             relative median bias of the three estimators,
 #                              shaded by whether theory predicts the estimand to
-#                              be identified; gold anchor, n = 2000
+#                              be identified; clean anchor, n = 2000
 #   SimFigure2.pdf             bias distributions, scenarios in which theta_I0
 #                              and theta_SD share a verdict; n = 250
 #   SimFigure3.pdf             the same, scenarios in which only theta_I0 is
 #                              identified
-#   SimFigure4.pdf             the same, an affected item promoted to the anchor
-#   fig_verdict_itemAnchor.pdf SimFigure1 for the promoted-anchor designs
-#   dag_glyph_sheet.pdf        all 13 scenarios as DAG glyphs, with the key
+#   SimFigure4.pdf             the same, contaminated anchor
+#   fig_verdict_itemAnchor.pdf SimFigure1 for the contaminated-anchor designs
+#   dag_glyph_sheet.pdf        all 14 scenarios as DAG glyphs, with the key
 #
 # Every figure with a scenario axis carries a strip of DAG glyphs under it
 # (functions/dag_glyphs.R).
@@ -45,11 +45,11 @@ long_n250  <- readRDS("sim_res/long_n250.rds")
 
 
 # === Glyph sheet (appendix) =====================================================
-# All 13 scenarios as glyphs, plus glyph_key(), the legend for every glyph
+# All 14 scenarios as glyphs, plus glyph_key(), the legend for every glyph
 # strip. Rows are families. The two anchor regimes are column-aligned (slot 2 is
 # orthogonal_IUY in both rows, slot 3 orthogonal_IUX, ...), so reading down a
 # column shows the same violation moving onto the anchor. Slot 1 of the
-# promoted row is empty because all_clean has no promoted twin.
+# contaminated-anchor row is empty because all_clean has no twin.
 all_labels <- c(scenario_labels, item_anchor_scenario_labels)
 
 sheet_row <- function(scs, title, k_slots = length(scs)) {
@@ -67,49 +67,46 @@ sheet_row <- function(scs, title, k_slots = length(scs)) {
                                        margin = margin(b = 1)))
 }
 
-row_gold <- sheet_row(
+row_clean <- sheet_row(
   c("all_clean", "orthogonal_IUY", "orthogonal_IUX", "one_confounder",
-    "two_more_factors", "DIF_in_z"),
-  "Gold anchor: contamination at a non-anchor item")
+    "two_more_factors", "DIF_in_z", "item_nosh_violated"),
+  "Clean anchor: violation at the non-anchor items")
 
 row_item <- sheet_row(
   c(NA, "orthogonal_IUY_itemAnchor", "orthogonal_IUX_itemAnchor",
     "one_confounder_itemAnchor", "two_more_factors_itemAnchor",
-    "DIF_in_z_itemAnchor"),
+    "DIF_in_z_itemAnchor", "item_nosh_violated_itemAnchor"),
   # no subscript zero here: the bold face of the default device font lacks U+2080
-  "Promoted anchor: the contaminated item becomes the anchor")
+  "Contaminated anchor: an affected item becomes the anchor")
 
-# Only two structural glyphs, so the key takes the rest of the row.
-row_struct <- sheet_row(c("nosh_violated", "anchor_nosh_violated"),
-                        "Structural (NOSH)")
+# One structural glyph, so the key takes the rest of the row.
+row_struct <- sheet_row("nosh_violated", "Structural (NOSH)")
 
 # Saved near its printed width (about 6.5in): ggplot text has an absolute size,
 # so a wide canvas scaled down in LaTeX would shrink the labels.
 save_fig("dag_glyph_sheet",
-         wrap_plots(row_gold, row_item,
+         wrap_plots(row_clean, row_item,
                     (row_struct | glyph_key(text_size = 2.5)) +
-                      plot_layout(widths = c(2, 4)),
+                      plot_layout(widths = c(1, 6)),
                     ncol = 1, heights = c(1, 1, 1)),
          width = 8, height = 6.6)
 
 
 # === Scenario groups ============================================================
-# The eight gold-anchor scenarios, split by what theory predicts:
+# The eight clean-anchor scenarios, split by what theory predicts:
 #   same     theta_I0 and theta_SD share a verdict: both identified (all_clean,
-#            orthogonal_IUY) or both not (A4b in nosh_violated; A6b at the
-#            anchor, which both estimands need)
+#            orthogonal_IUY) or both not (A4b in nosh_violated)
 #   differ   theta_I0 identified, theta_SD not: the violation sits at the
-#            ordinary items and breaks A5 (DIF_in_z), A7 (one_confounder,
-#            two_more_factors) or A8 (orthogonal_IUX)
-same_scenarios   <- c("all_clean", "orthogonal_IUY",
-                      "nosh_violated", "anchor_nosh_violated")
-differ_scenarios <- c("orthogonal_IUX", "DIF_in_z",
-                      "one_confounder", "two_more_factors")
+#            ordinary items and breaks A5 (DIF_in_z), A6b (item_nosh_violated),
+#            A7 (one_confounder, two_more_factors) or A8 (orthogonal_IUX)
+same_scenarios   <- c("all_clean", "orthogonal_IUY", "nosh_violated")
+differ_scenarios <- c("orthogonal_IUX", "DIF_in_z", "one_confounder",
+                      "two_more_factors", "item_nosh_violated")
 
-# The five designs in which an affected item is promoted to the anchor
+# The six contaminated-anchor designs (an affected item is the anchor)
 item_anchor_scenarios <- c("orthogonal_IUY_itemAnchor", "orthogonal_IUX_itemAnchor",
                            "one_confounder_itemAnchor", "two_more_factors_itemAnchor",
-                           "DIF_in_z_itemAnchor")
+                           "DIF_in_z_itemAnchor", "item_nosh_violated_itemAnchor")
 
 
 # === SimFigure1 and fig_verdict_itemAnchor: relative median bias ================
@@ -119,13 +116,14 @@ item_anchor_scenarios <- c("orthogonal_IUY_itemAnchor", "orthogonal_IUX_itemAnch
 # columns of the scenario table), so readers can judge for themselves whether a
 # number is off.
 #
-# Scenarios in which each estimand is identified. With a promoted anchor,
-# theta_I0 needs A1-A6 at the anchor only, so only DIF by Z at the anchor (A5)
-# breaks it; theta_SD needs A1-A8 at every item, which only
+# Scenarios in which each estimand is identified. With a contaminated anchor,
+# theta_I0 needs A1-A6 at the anchor only, so only DIF by Z (A5) and item NOSH
+# (A6b) at the anchor break it; theta_SD needs A1-A8 at every item, which only
 # orthogonal_IUY_itemAnchor satisfies.
 identified_scenarios <- list(
   "I₀ anchor metric" = c("all_clean", "orthogonal_IUY", "orthogonal_IUX",
                          "DIF_in_z", "one_confounder", "two_more_factors",
+                         "item_nosh_violated",
                          "orthogonal_IUY_itemAnchor", "orthogonal_IUX_itemAnchor",
                          "one_confounder_itemAnchor",
                          "two_more_factors_itemAnchor"),
@@ -134,20 +132,22 @@ identified_scenarios <- list(
 
 # Scenarios that violate a restriction the estimator imposes, again from theory.
 # SEM-IV and Two-step FA-IV build their first stage from a one-factor model of
-# all items, so they need A5, A7 and A8 at every item; SEM-IV also fixes the
+# all items, so they need A5 to A8 at every item; SEM-IV also fixes the
 # item-Y residual covariances to 0, which the U_j -> I_j, Y confounders break.
 # Anchor-Wald uses the anchor alone. A cell is hatched where the estimand is
 # identified but the estimator is on this list.
 violated_scenarios <- list(
   "SEM-IV"         = c("orthogonal_IUY", "orthogonal_IUX", "DIF_in_z",
-                       "one_confounder", "two_more_factors",
+                       "one_confounder", "two_more_factors", "item_nosh_violated",
                        "orthogonal_IUY_itemAnchor", "orthogonal_IUX_itemAnchor",
                        "one_confounder_itemAnchor",
-                       "two_more_factors_itemAnchor", "DIF_in_z_itemAnchor"),
+                       "two_more_factors_itemAnchor", "DIF_in_z_itemAnchor",
+                       "item_nosh_violated_itemAnchor"),
   "Two-step FA-IV" = c("orthogonal_IUX", "DIF_in_z", "one_confounder",
-                       "two_more_factors", "orthogonal_IUX_itemAnchor",
-                       "one_confounder_itemAnchor",
-                       "two_more_factors_itemAnchor", "DIF_in_z_itemAnchor"),
+                       "two_more_factors", "item_nosh_violated",
+                       "orthogonal_IUX_itemAnchor", "one_confounder_itemAnchor",
+                       "two_more_factors_itemAnchor", "DIF_in_z_itemAnchor",
+                       "item_nosh_violated_itemAnchor"),
   "Anchor-Wald"    = character(0))
 
 # The item-Y restriction only shrinks the latent unit relative to the anchor;
@@ -246,10 +246,10 @@ verdict_grid <- function(long, scenarios, labels, ests = anchor_ests) {
                                     margin = margin(t = 4, b = 3)))
 }
 
-verdict_gold <- c(same_scenarios, differ_scenarios)
+verdict_clean <- c(same_scenarios, differ_scenarios)
 save_fig("SimFigure1",
-         with_dags(verdict_grid(long_n2000, verdict_gold, scenario_labels),
-                   verdict_gold, heights = c(1, 2.2)),
+         with_dags(verdict_grid(long_n2000, verdict_clean, scenario_labels),
+                   verdict_clean, heights = c(1, 2.2)),
          width = 12.5, height = 5.2)
 
 save_fig("fig_verdict_itemAnchor",
@@ -275,7 +275,7 @@ whisker_limits <- function(d, pad = 0.05) {
 }
 
 # relative = TRUE plots (estimate - truth) / truth instead of estimate - truth;
-# used for the promoted anchor, where the truth on the I0 metric changes with
+# used for the contaminated anchor, where the truth on the I0 metric changes with
 # the item drawn in each replication.
 stacked_fig <- function(scenarios, labels = scenario_labels, relative = FALSE) {
   d <- long_n250[!is.na(bias) & estimator %in% anchor_ests &

@@ -19,7 +19,7 @@ long_n2000 <- readRDS("sim_res/long_n2000.rds")
 # --- Summaries -----------------------------------------------------------------
 # Failed replications (NA estimates) are left out of every summary. rel_*:
 # bias relative to each replication's truth, used where the truth varies across
-# replications (the promoted-anchor designs on the I0 metric).
+# replications (the contaminated-anchor designs on the I0 metric).
 summarise_long <- function(long) {
   long[, .(
     bias            = mean(bias, na.rm = TRUE),
@@ -42,7 +42,7 @@ fwrite(summ_n2000, "tables/summary_n2000.csv")
 # --- Failure counts --------------------------------------------------------------
 # A replication fails for an estimator when its I0 or SD estimate is NA: SEM-IV
 # did not converge; for two-step FA-IV a CFA did not converge or returned a
-# negative variance. Only the 13 reported scenarios count.
+# negative variance. Only the 14 reported scenarios count.
 reported_scenarios <- c(names(scenario_tex_names), names(item_anchor_tex_names))
 
 fail_by_scenario <- function(long) {
@@ -73,9 +73,9 @@ writeLines(c(
 # --- Table bodies ------------------------------------------------------------------
 # One row per scenario: for each estimator, median bias & RMSE & coverage.
 #   tex_names: the scenarios of the table, in row order, with their row names
-#   relative:  report relative median bias and relative RMSE (promoted anchor
+#   relative:  report relative median bias and relative RMSE (contaminated anchor
 #              on the I0 metric, where the truth varies across replications)
-#   split:     \midrule after row 4, between the scenarios in which both
+#   split:     \midrule after row 3, between the scenarios in which both
 #              estimands share a verdict and those in which only theta_I0 is
 #              identified
 f3     <- function(x) sprintf("%.3f", x)
@@ -95,7 +95,7 @@ tex_rows <- function(summ, scale_label, estimators, tex_names,
   rows <- d[, .(row = paste0(tex_names[[as.character(scenario)]], " & ",
                              paste(cells, collapse = " & "), " \\\\")),
             by = scenario]$row
-  if (split) rows <- append(rows, "\\midrule", after = 4)
+  if (split) rows <- append(rows, "\\midrule", after = 3)
   c(rows, "\\bottomrule")
 }
 
@@ -114,7 +114,7 @@ writeLines(tex_rows(summ_n250,  SD, sd_estimators, scenario_tex_names, split = T
 writeLines(tex_rows(summ_n2000, SD, sd_estimators, scenario_tex_names, split = TRUE),
            file.path(paper_dir, "manTable_sd_largeN_rows.tex"))
 
-# An affected item promoted to the anchor, theta_I0 (relative) and theta_SD
+# Contaminated anchor (an affected item is I0), theta_I0 (relative) and theta_SD
 writeLines(tex_rows(summ_n250,  I0, anchor_estimators, item_anchor_tex_names, relative = TRUE),
            file.path(paper_dir, "manTable_anchor_itemAnchor_smallN_rows.tex"))
 writeLines(tex_rows(summ_n2000, I0, anchor_estimators, item_anchor_tex_names, relative = TRUE),

@@ -70,15 +70,16 @@ estimator_colors <- setNames(
 
 # --- Scenarios -------------------------------------------------------------------
 scenario_levels <- c(
-  # reported: gold anchor
+  # reported: clean anchor
   "all_clean", "orthogonal_IUY", "orthogonal_IUX",
   "DIF_in_z", "one_confounder", "two_more_factors",
-  "nosh_violated", "anchor_nosh_violated",
-  # reported: an affected item is the anchor
+  "nosh_violated", "item_nosh_violated",
+  # reported: contaminated anchor (an affected item is I₀)
   "orthogonal_IUY_itemAnchor", "orthogonal_IUX_itemAnchor",
   "one_confounder_itemAnchor", "two_more_factors_itemAnchor",
-  "DIF_in_z_itemAnchor",
-  # [not in manuscript] check scenario (A8 through the loading channel)
+  "DIF_in_z_itemAnchor", "item_nosh_violated_itemAnchor",
+  # [not in manuscript] check scenario (A8 through the loading channel), only
+  # with run_simulation_study(include_check = TRUE)
   "orthogonal_IUX_loading", "orthogonal_IUX_loading_itemAnchor")
 
 # Figure axis labels: the scenario name, and the assumption at stake on a
@@ -91,44 +92,47 @@ scenario_labels <- c(
   one_confounder       = "Shared U → I,Y\n(A7 violated)",
   two_more_factors     = "Two more factors\n(A7 violated)",
   nosh_violated        = "NOSH\n(A4b violated)",
-  anchor_nosh_violated = "Anchor NOSH\n(A6b violated)"
+  item_nosh_violated   = "Item-NOSH\n(A6b violated)"
 )
 
-# The same for the designs in which an affected item is promoted to I₀. Each
+# The same for the contaminated-anchor designs (an affected item is I₀). Each
 # label states the assumption at stake at the anchor. theta_I0 needs A1-A6 at
-# the anchor only, so only DIF by Z (A5 at the anchor) breaks it.
+# the anchor only, so only DIF by Z (A5) and item NOSH (A6b) at the anchor
+# break it.
 item_anchor_scenario_labels <- c(
-  orthogonal_IUY_itemAnchor   = "Indep. Uⱼ → Iⱼ,Y\n(A7, A8 hold)",
-  orthogonal_IUX_itemAnchor   = "Indep. Uⱼ → Iⱼ,X\n(A8 violated)",
-  one_confounder_itemAnchor   = "Shared U → I,Y\n(A7 violated)",
-  two_more_factors_itemAnchor = "Two more factors\n(A7 violated)",
-  DIF_in_z_itemAnchor         = "DIF by Z\n(A5 violated)"
+  orthogonal_IUY_itemAnchor     = "Indep. Uⱼ → Iⱼ,Y\n(A7, A8 hold)",
+  orthogonal_IUX_itemAnchor     = "Indep. Uⱼ → Iⱼ,X\n(A8 violated)",
+  one_confounder_itemAnchor     = "Shared U → I,Y\n(A7 violated)",
+  two_more_factors_itemAnchor   = "Two more factors\n(A7 violated)",
+  DIF_in_z_itemAnchor           = "DIF by Z\n(A5 violated)",
+  item_nosh_violated_itemAnchor = "Item-NOSH\n(A6b violated)"
 )
 
 # Row names of the manuscript tables (02_tables.R), as in the scenario table of
 # the manuscript. The order is the split used in the figures and tables: in the
-# first four rows both estimands share a verdict, in the last four only
+# first three rows both estimands share a verdict, in the last five only
 # theta_I0 is identified.
 scenario_tex_names <- c(
   all_clean            = "All clean",
   orthogonal_IUY       = "Indep.\\ $U_j \\to I_j, Y$",
   nosh_violated        = "NOSH violated",
-  anchor_nosh_violated = "Anchor-NOSH violated",
   orthogonal_IUX       = "Indep.\\ $U_j \\to I_j, X$",
   DIF_in_z             = "DIF by $Z$",
   one_confounder       = "Shared $U \\to I, Y$",
-  two_more_factors     = "Two more factors"
+  two_more_factors     = "Two more factors",
+  item_nosh_violated   = "Item-NOSH violated"
 )
 
-# Promoted-anchor designs. The table caption says that an item is the anchor;
-# DIF by Z keeps "at the anchor" because it is the one violation theta_I0
-# cannot survive.
+# Contaminated-anchor designs. The table caption says that the anchor is
+# contaminated; DIF by Z and item NOSH keep "at the anchor" because they are
+# the two violations theta_I0 cannot survive.
 item_anchor_tex_names <- c(
-  orthogonal_IUY_itemAnchor   = "Indep.\\ $U_j \\to I_j, Y$",
-  orthogonal_IUX_itemAnchor   = "Indep.\\ $U_j \\to I_j, X$",
-  one_confounder_itemAnchor   = "Shared $U \\to I, Y$",
-  two_more_factors_itemAnchor = "Two more factors",
-  DIF_in_z_itemAnchor         = "DIF by $Z$ at the anchor"
+  orthogonal_IUY_itemAnchor     = "Indep.\\ $U_j \\to I_j, Y$",
+  orthogonal_IUX_itemAnchor     = "Indep.\\ $U_j \\to I_j, X$",
+  one_confounder_itemAnchor     = "Shared $U \\to I, Y$",
+  two_more_factors_itemAnchor   = "Two more factors",
+  DIF_in_z_itemAnchor           = "DIF by $Z$ at the anchor",
+  item_nosh_violated_itemAnchor = "Item-NOSH at the anchor"
 )
 
 # --- Plot theme --------------------------------------------------------------------

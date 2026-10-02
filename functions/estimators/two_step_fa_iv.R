@@ -29,9 +29,10 @@ fit_factor_scores <- function(data, metric) {
   }
 
   # MLR as in SEM-IV (same point estimates and scores as ML); test = "none"
-  # because only the scores are used, never the fit statistic
+  # because only the scores are used, never the fit statistic; bad.marker.crit
+  # = 0 keeps I0 as the marker even when lavaan judges it a poor item
   fit <- cfa(model, data = data, std.lv = std_lv, estimator = "MLR",
-             test = "none")
+             test = "none", bad.marker.crit = 0)
   if (!lavInspect(fit, "converged")) return(NULL)
 
   pe <- parameterEstimates(fit)

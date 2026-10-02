@@ -3,9 +3,9 @@
 # run_simulation_study() returns one row per replication x scenario view, with
 # the population truths and every estimate with its 95% CI.
 #
-# Every scenario generates one dataset per replication. View A (gold anchor,
+# Every scenario generates one dataset per replication. View A (clean anchor,
 # clean) is stored under the scenario name. For scenarios with `twin = TRUE`,
-# view B of the same dataset (the first affected item becomes the anchor I0)
+# view B of the same dataset (one affected item becomes the anchor I0)
 # is estimated as well and stored as <name>_itemAnchor.
 source("functions/simulate_data.R")
 source("functions/estimators/sem_iv.R")
@@ -18,7 +18,8 @@ library(data.table)
 library(progressr)
 
 run_simulation_study <- function(N_iter, n_each,
-                                 n_workers = availableCores() - 1) {
+                                 n_workers = availableCores() - 1,
+                                 include_check = FALSE) {  # [not in manuscript] check scenario
 
   # --- 1. Parallel plan -------------------------------------------------------
   old_plan <- plan()
@@ -33,7 +34,7 @@ run_simulation_study <- function(N_iter, n_each,
   # simulate_data().
   base_args <- list(
     n = n_each,
-    K = 10,              # 10 ordinary items + the gold anchor
+    K = 10,              # 10 ordinary items + the clean anchor
 
     beta_X    = 1.5,     # beta_X = E[beta_Xi]; manipulation-check d ~ .66
     sd_beta_X = 0.5,     # sigma_beta_X, SD of beta_Xi
@@ -50,7 +51,7 @@ run_simulation_study <- function(N_iter, n_each,
     sd_eps_I_min = 0.5, sd_eps_I_max = 1.5,         # item error SDs U(.5, 1.5)
     cv_lambda = 0.12,    # CV, loading heterogeneity, independent of compliance
 
-    lambda_std_0 = 0.75, # gold anchor
+    lambda_std_0 = 0.75, # clean anchor
     sd_eps_0 = 1, nu_0 = 0,
 
     pi_I    = c(0.7, 0.21),  # pi_j ~ N(.7, .21) and kappa_j ~ N(.21, .14): the
@@ -73,18 +74,10 @@ run_simulation_study <- function(N_iter, n_each,
       args = list(affected = "U_item", n_affected = 10, pi_Y_item = 2),
       twin = TRUE),
 
-    # Corr(beta_Xi, beta_Yi) = .8, so the IV estimand becomes
-    # E[beta_Xi beta_Yi] / beta_X = 1.5 + .8 * .5 * 1 / 1.5 = 1.77. Violates A4(b).
+    # Corr(beta_Xi, beta_Yi) = .4, so the IV estimand becomes
+    # E[beta_Xi beta_Yi] / beta_X = 1.5 + .4 * .5 * 1 / 1.5 = 1.63. Violates A4(b).
     nosh_violated = list(
-      args = list(rho = 0.8),
-      twin = FALSE),
-
-    # Gold anchor loading lambda_0i = lambda_0 [1 + CV E_0i + kappa_0 c_Xi], with
-    # c_Xi = (beta_Xi - beta_X) / sd_beta_X, so
-    # Cov(lambda_0i, beta_Xi) = kappa_0 lambda_0 sd_beta_X.
-    # Violates A6(b) at the anchor (and A8 there, unavoidably).
-    anchor_nosh_violated = list(
-      args = list(kappa_0 = -0.625),
+      args = list(rho = 0.4),
       twin = FALSE),
 
     # Own U_ji for every item: item term with U_(j) = U_ji, and
@@ -117,16 +110,26 @@ run_simulation_study <- function(N_iter, n_each,
       args = list(affected = "U_AB", n_affected = 10, n_A = 3),
       twin = TRUE),
 
-    # ---- Not reported in the manuscript: check scenario ----------------------
-    # A8 through the loading channel alone. U_j -> X, and U_j moderates the
-    # loading on raw X without shifting the intercept (pi_j = 0), so
-    # Cov(X, delta_j) = kappa_j pi_Xj mu_X / sigma_X. It checks that A8 can be
-    # broken by the loading alone; the resulting bias is small.
-    orthogonal_IUX_loading = list(
+    # Item loading lambda_ji = lambda_j (1 + CV E_ji + kappa_Cj c_Xi) with
+    # kappa_Cj ~ N(-.3, .1) and c_Xi = (beta_Xi - beta_X) / sd_beta_X, so
+    # Cov(lambda_ji, beta_Xi) = kappa_Cj lambda_j sd_beta_X. Violates A6(b) at
+    # every item (and A8, unavoidably: the loading tracks compliance, which is
+    # part of X in the treated arm).
+    item_nosh_violated = list(
+      args = list(affected = "NOSH", n_affected = 10, kappa_C = c(-0.3, 0.1)),
+      twin = TRUE)
+  )
+
+  # ---- Not reported in the manuscript: check scenario ------------------------
+  # A8 through the loading channel alone. U_j -> X, and U_j moderates the
+  # loading on raw X without shifting the intercept (pi_j = 0), so
+  # Cov(X, delta_j) = kappa_j pi_Xj mu_X / sigma_X. It checks that A8 can be
+  # broken by the loading alone; the resulting bias is small.
+  if (include_check)
+    scenarios$orthogonal_IUX_loading <- list(
       args = list(affected = "U_item", n_affected = 10, pi_X_item = 2,
                   pi_I = c(0, 0), kappa_centred = FALSE),
       twin = TRUE)
-  )
 
   # --- 4. One dataset view -> one output row ----------------------------------
   # Both CFAs are fitted once and shared by the two-step estimator and the

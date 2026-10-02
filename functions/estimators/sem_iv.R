@@ -23,8 +23,10 @@ sem_iv <- function(data) {
      X ~~ Y      # endogeneity")
 
   # MLR: ML point estimates with robust (Huber-White) SEs, since the random
-  # slopes and loadings make the data non-normal
-  fit <- sem(model, data = data, estimator = "MLR")
+  # slopes and loadings make the data non-normal. bad.marker.crit = 0 keeps I0
+  # as the marker even when lavaan judges it a poor item.
+  fit <- sem(model, data = data, estimator = "MLR", 
+              bad.marker.crit = 0) # only needed for Simulation coherence
 
   out <- data.table(sem = NA_real_, sem_LowerCI = NA_real_, sem_UpperCI = NA_real_,
                     sem_scaled = NA_real_, sem_scaled_LowerCI = NA_real_,
