@@ -28,16 +28,20 @@ OUT <- file.path(paper_dir, "Simulation Results")
 save_fig <- function(name, plot, ...)
   ggsave(file.path(OUT, paste0(name, ".pdf")), plot, device = grDevices::cairo_pdf, ...)
 
-# Glyph strip below the figure, legend to the right.
+# Glyph strip below the figure, legend on top.
 with_dags <- function(p, scenarios, heights = c(1, 2.8))
-  attach_dag_strip(p + theme(legend.position = "right"), scenarios,
-                   heights = heights, position = "bottom")
+  attach_dag_strip(p, scenarios, heights = heights, position = "bottom")
+
+# Estimand headers (theta_I0, theta_SD): bold, large and centred, so they read
+# as subheadings rather than as panel labels.
+estimand_strip <- theme(strip.text = element_text(size = 15, hjust = 0.5,
+                                                  margin = margin(t = 6, b = 4)))
 
 # Plotmath, because the cairo sans face has ⱼ (U+2C7C) but not ₀ (U+2080):
 # a literal "I₀" in device text comes out as an empty box.
 stacked_scales       <- c("I₀ anchor metric", "X SD-scaled")
-stacked_facet_labels <- c("I₀ anchor metric" = "'θ'[italic(I)[0]]",
-                          "X SD-scaled"      = "'θ'[SD]")
+stacked_facet_labels <- c("I₀ anchor metric" = "bold('θ')[bold(italic(I))[bold(0)]]",
+                          "X SD-scaled"      = "bold('θ')[bold(SD)]")
 anchor_ests          <- c("SEM-IV", "Anchor-Wald", "Two-step FA-IV")
 
 long_n2000 <- readRDS("sim_res/long_n2000.rds")
@@ -241,16 +245,15 @@ verdict_grid <- function(long, scenarios, labels, ests = anchor_ests) {
     scale_x_discrete(labels = labels) +
     labs(x = NULL, y = NULL) +
     theme_pub +
-    theme(axis.line = element_blank(), axis.ticks = element_blank(),
-          strip.text = element_text(size = 12, hjust = 0.5,
-                                    margin = margin(t = 4, b = 3)))
+    estimand_strip +
+    theme(axis.line = element_blank(), axis.ticks = element_blank())
 }
 
 verdict_clean <- c(same_scenarios, differ_scenarios)
 save_fig("SimFigure1",
          with_dags(verdict_grid(long_n2000, verdict_clean, scenario_labels),
                    verdict_clean, heights = c(1, 2.2)),
-         width = 12.5, height = 5.2)
+         width = 11.5, height = 5.4)
 
 save_fig("fig_verdict_itemAnchor",
          with_dags(verdict_grid(long_n2000, item_anchor_scenarios,
@@ -316,7 +319,7 @@ stacked_fig <- function(scenarios, labels = scenario_labels, relative = FALSE) {
     scale_x_discrete(labels = labels) +
     labs(x = NULL, y = if (relative) "(Estimate − True Value) / True Value" else "Estimate − True Value") +
     theme_pub +
-    theme(strip.text = element_text(size = 12, margin = margin(b = 3)))
+    estimand_strip
 
   with_dags(p, scenarios, heights = c(1, 4.5))
 }

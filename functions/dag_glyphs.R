@@ -338,7 +338,8 @@ attach_dag_strip <- function(p, scenarios, heights = c(1, 2.8),
                                               margin = margin(t = 4)))
     return(p / dag_strip(scenarios, x_expand = x_expand) +
              plot_layout(heights = rev(heights), guides = "collect") &
-             theme(legend.position = "right"))
+             theme(legend.position = "top", legend.direction = "horizontal",
+                   legend.margin = margin(b = 2)))
   }
   if (trim_margin)
     p <- p + theme(plot.margin = margin(0, 5.5, 5.5, 5.5))
