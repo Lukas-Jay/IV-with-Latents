@@ -25,7 +25,7 @@ functions/
   estimators/             one file per manuscript estimator, plus other_estimators.R
   shared_constants.R      estimator map, scenario labels, plot theme
   dag_glyphs.R            the DAG glyphs drawn under the scenario axis
-sim_res/                  cached simulation results
+sim_res/                  simulation results (the result CSVs are not in the repository)
 tables/                   summary tables (CSV)
 ```
 
@@ -37,9 +37,9 @@ Open the `.Rproj` file (or set the working directory to this folder) and run
 source("run_all.R")
 ```
 
-This rebuilds every table and figure from the cached results in `sim_res/`, which takes a few minutes. The tables and figures are written to the folder set by `paper_dir` in `functions/shared_constants.R`. Change it if the manuscript folder is not next to this one.
+This rebuilds every table and figure from `sim_res/results_n250.csv` and `sim_res/results_n2000.csv`, which takes a few minutes. The two files (about 115 MB each) are too large for GitHub and are not included, so run the simulation first. The tables and figures are written to the folder set by `paper_dir` in `functions/shared_constants.R`. Change it if the manuscript folder is not next to this one.
 
-To rerun the simulation itself, change `if (FALSE)` to `if (TRUE)` in `run_all.R`. Expect several hours on six cores. `N_ITER` and `N_WORKERS` are set at the top of that block. The results do not depend on the number of workers: `future.seed = TRUE` gives every replication its own random-number stream.
+To rerun the simulation itself, change `if (FALSE)` to `if (TRUE)` in `run_all.R`. With 10,000 replications per sample size, this takes many hours. `N_ITER` and `N_WORKERS` are set at the top of that block. The results do not depend on the number of workers: `future.seed = TRUE` gives every replication its own random-number stream.
 
 Requirements: R 4.6.1 with data.table 1.18.4, lavaan 0.7.2, ivreg 0.6.8, future.apply 1.20.2, progressr 1.0.0, ggplot2 4.0.3, patchwork 1.3.2, ggh4x 0.3.1 and scales 1.4.0. The simulation block writes the full session information to `sim_res/session_info.txt`.
 
