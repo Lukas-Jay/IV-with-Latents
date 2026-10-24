@@ -17,3 +17,6 @@ CLAUDE.md
 
 # Derived by 01_build_long_data.R
 sim_res/*.rds
+
+# Too large for GitHub (10,000 reps); regenerate with stage 0 of run_all.R
+sim_res/*.csv

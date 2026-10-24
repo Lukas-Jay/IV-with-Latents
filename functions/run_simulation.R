@@ -19,7 +19,8 @@ library(progressr)
 
 run_simulation_study <- function(N_iter, n_each,
                                  n_workers = availableCores() - 1,
-                                 include_check = FALSE) {  # [not in manuscript] check scenario
+                                 include_check = FALSE) {  # [not in manuscript]
+  
 
   # --- 1. Parallel plan -------------------------------------------------------
   old_plan <- plan()
@@ -28,7 +29,7 @@ run_simulation_study <- function(N_iter, n_each,
 
   my_packages <- c("data.table", "ivreg", "lavaan")
 
-  # --- 2. Parameters ------------------------------------------------------------
+  # --- 2. Parameters ----------------------------------------------------------
   # Global parameters, the same in every scenario (manuscript: table of
   # population parameters). Item parameters are drawn per dataset inside
   # simulate_data().

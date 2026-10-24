@@ -230,7 +230,8 @@ verdict_grid <- function(long, scenarios, labels, ests = anchor_ests) {
                  stat = StatHatch, inherit.aes = FALSE,
                  colour = hatch_colour, linewidth = 0.5) +
     geom_tile(fill = NA, colour = "white", linewidth = 0.9) +
-    geom_label(aes(label = sprintf("%+.1f%%", 100 * rel_bias)), size = 2.8,
+    # + 0 turns -0 into 0, so a bias that rounds to zero prints as +0.0%
+    geom_label(aes(label = sprintf("%+.1f%%", round(100 * rel_bias, 1) + 0)), size = 2.8,
                border.colour = NA, label.r = unit(0, "pt"),
                label.padding = unit(0.12, "lines"), show.legend = FALSE) +
     # Estimand headers centred above each block; the heights keep the 3 and 2

@@ -10,7 +10,7 @@ source("functions/run_simulation.R")
 
 if (FALSE) {
   
-N_ITER    <- 2000  # replications per sample size; the manuscript reports 10,000
+N_ITER    <- 10000 # replications per sample size
 N_WORKERS <- 10    # parallel R sessions
 
 # progress bar in the console
