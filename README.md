@@ -31,10 +31,10 @@ tables/                   summary tables (CSV)
 
 ## Running the code
 
-Open the `.Rproj` file (or set the working directory to this folder) and run
+Set the working directory to the folder that contains `IV with Latents/` and run
 
 ```r
-source("run_all.R")
+source("IV with Latents/run_all.R")
 ```
 
 This rebuilds every table and figure from `sim_res/results_n250.csv` and `sim_res/results_n2000.csv`, which takes a few minutes. The two files (about 115 MB each) are too large for GitHub and are not included, so run the simulation first. The tables and figures are written to the folder set by `paper_dir` in `functions/shared_constants.R`. Change it if the manuscript folder is not next to this one.
