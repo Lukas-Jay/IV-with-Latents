@@ -1,7 +1,7 @@
 # run_all.R
 # Regenerates every simulation table and figure of the manuscript from the
-# cached results in sim_res/. Run from the folder that contains IV with Latents/.
-setwd("IV with Latents")
+# cached results in sim_res/. Run from source folder.
+# setwd("IV with Latents")
 
 
 # Stage 0, the simulation itself, takes several hours; its results are cached

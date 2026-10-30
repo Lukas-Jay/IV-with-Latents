@@ -27,7 +27,7 @@ run_simulation_study <- function(N_iter, n_each,
   plan(multisession, workers = n_workers)
   on.exit(plan(old_plan), add = TRUE)
 
-  my_packages <- c("data.table", "ivreg", "lavaan")
+  my_packages <- c("data.table", "ivreg", "sandwich", "lavaan")
 
   # --- 2. Parameters ----------------------------------------------------------
   # Global parameters, the same in every scenario (manuscript: table of

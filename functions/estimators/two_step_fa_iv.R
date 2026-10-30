@@ -7,6 +7,7 @@
 # two_step_fa_iv() is step 2 with Bartlett scores, the version reported.
 library(lavaan)
 library(ivreg)
+library(sandwich)
 library(data.table)
 
 # --- Step 1: CFA and factor scores --------------------------------------------
@@ -28,11 +29,11 @@ fit_factor_scores <- function(data, metric) {
     std_lv <- TRUE
   }
 
-  # MLR as in SEM-IV (same point estimates and scores as ML); test = "none"
-  # because only the scores are used, never the fit statistic; bad.marker.crit
-  # = 0 keeps I0 as the marker even when lavaan judges it a poor item
-  fit <- cfa(model, data = data, std.lv = std_lv, estimator = "MLR",
-             test = "none", bad.marker.crit = 0)
+  # ML (lavaan's default): only the scores are used, never the SEs or the fit
+  # statistic (test = "none"); bad.marker.crit = 0 keeps I0 as the marker even
+  # when lavaan judges it a poor item
+  fit <- cfa(model, data = data, std.lv = std_lv, test = "none",
+             bad.marker.crit = 0)
   if (!lavInspect(fit, "converged")) return(NULL)
 
   pe <- parameterEstimates(fit)
@@ -48,10 +49,12 @@ fit_factor_scores <- function(data, metric) {
 # --- Helpers for step 2 -------------------------------------------------------
 no_estimate <- c(est = NA_real_, lower = NA_real_, upper = NA_real_)
 
-# Slope of the regressor in an ivreg or lm fit, with its 95% CI
+# Slope of the regressor in an ivreg or lm fit, with its 95% CI from HC3
+# (heteroskedasticity-robust) SEs and t quantiles, as in anchor_wald()
 slope_ci <- function(model) {
-  ci <- confint(model)[2, ]
-  c(est = coef(model)[[2]], lower = ci[[1]], upper = ci[[2]])
+  est  <- coef(model)[[2]]
+  half <- qt(0.975, df.residual(model)) * sqrt(vcovHC(model, type = "HC3")[2, 2])
+  c(est = est, lower = est - half, upper = est + half)
 }
 
 # Y, the scores and Z in one table; a person with an infinite score is dropped

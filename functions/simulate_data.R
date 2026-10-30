@@ -106,8 +106,11 @@ simulate_data <- function(
   }
   has_U <- type %in% c("U_item", "U_S", "U_A", "U_B")
 
-  lambda_std <- pmin(pmax(rnorm(K, lambda_std_mean, lambda_std_sd),
-                          lambda_std_min), lambda_std_max)
+  # truncated normal on [lambda_std_min, lambda_std_max], drawn by inverting
+  # the normal CDF
+  lambda_std <- qnorm(runif(K, pnorm(lambda_std_min, lambda_std_mean, lambda_std_sd),
+                               pnorm(lambda_std_max, lambda_std_mean, lambda_std_sd)),
+                      lambda_std_mean, lambda_std_sd)
   sd_eps_I   <- runif(K, sd_eps_I_min, sd_eps_I_max)
   nu         <- rnorm(K)
   # pi_j and kappa_j are drawn for every item and used only where U_(j) exists

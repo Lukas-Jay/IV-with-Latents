@@ -6,11 +6,14 @@
 # Input:  one dataset view (columns I0, Z, Y)
 # Output: one row with the estimate and its 95% CI
 library(ivreg)
+library(sandwich)
 library(data.table)
 
 anchor_wald <- function(data) {
   fit <- ivreg(Y ~ I0 | Z, data = data)
-  ci  <- confint(fit)[2, ]
+  # HC3 (heteroskedasticity-robust) SEs, since the random slopes and loadings
+  # make the residual variance differ between persons
+  ci  <- confint(fit, vcov. = vcovHC(fit, type = "HC3"))[2, ]
 
   data.table(anchorWald         = coef(fit)[[2]],
              anchorWald_LowerCI = ci[[1]],
