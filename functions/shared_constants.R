@@ -5,8 +5,7 @@
 library(data.table)
 library(ggplot2)
 
-# Folder of the manuscript. The tables (.tex rows) are written into it and the
-# figures into its "Simulation Results/" subfolder; change it to write elsewhere.
+# Manuscript folder: tables are written here, figures into "Simulation Results/".
 paper_dir <- "../Latex Paper"
 
 # --- Estimators ----------------------------------------------------------------

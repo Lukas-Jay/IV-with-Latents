@@ -8,37 +8,13 @@
 #
 # plus dag_strip() (the strip alone) and glyph_key() (the legend). Nothing is
 # read or written.
-#
-# Usage (the target figure needs no changes):
-#   p <- ggplot(...) + ... + theme_pub
-#   ggsave("... .pdf", attach_dag_strip(p, scenarios), width = 9, height = 6)
-#
-# `scenarios` must be the same vector, in the same order, that the figure uses
-# for its x factor levels. The strip's x expansion defaults to ggplot's discrete
-# default (add = 0.6 around 1..k), so the cells line up with the boxplot groups
-# without touching the figure's scale_x_discrete().
-#
-# Design rules (they are what make the strip scannable):
-#   * Every glyph carries the SAME grey skeleton — Z -> X -> Y, the X <- U -> Y
-#     confounder that every scenario has (it is why we need an instrument), and
-#     the indicators. Only the black marks differ, so the eye reads a row as
-#     "what was switched on here".
-#   * Two indicators (I0 and Ij) by default; a third (Ik) only where the
-#     violation needs it to be read: a confounder shared by two items, or two
-#     extra factors on different items.
-#   * The anchor I0 is boxed in every glyph. The question the figure answers is
-#     always "does the black edge touch the box?".
-#   * Measurement violations live in the outer ring around the indicators;
-#     structural (NOSH) violations are dashed bidirected arcs attached to the
-#     midpoints of the *edges* whose coefficients covary — not to the nodes.
 # =============================================================================
 library(data.table)
 library(ggplot2)
 library(patchwork)
 library(grid)
 
-# --------------------------------------------------------------------- style
-# Everything that controls how heavy the drawing looks lives here.
+# Style
 GLY <- list(
   skel_col  = "grey58",   # the assumed model
   skel_lw   = 0.45,
@@ -50,12 +26,11 @@ GLY <- list(
   node_size = 2.8,
   pad       = 0.045,      # edge trim at a node, in x-data units
   pad_frac  = 0.30,       # ... but never more than this share of the edge
-  yx        = 0.42        # y-unit / x-unit physical size; makes the trim
-)                         # isotropic on the page rather than in data units
+  yx        = 0.42        # y-unit / x-unit size on the page
+)
 
 # ------------------------------------------------------------ glyph geometry
-# Rows: the X-Y confounder U on top, the causal row, the indicator row, and the
-# extra factors (two_more_factors only) at the bottom.
+# Rows, top to bottom: U, causal row, items, extra factors (two_more_factors).
 ROW <- c(U = 0.92, causal = 0.70, item = 0.18, factor = -0.10)
 
 NODES <- data.table(
@@ -80,14 +55,13 @@ THREE_ITEMS <- c("one_confounder", "two_more_factors",
 
 # Edges to an indicator a glyph does not draw are dropped by build_edges().
 SKELETON <- data.table(
-  from = c("Z", "X", "U", "U", "X",  "X",  "X"),
-  to   = c("X", "Y", "X", "Y", "I0", "Ij", "Ik")
+  from  = c("Z", "X", "U", "U", "X",  "X",  "X"),
+  to    = c("X", "Y", "X", "Y", "I0", "Ij", "Ik"),
+  curve = 0
 )
 
-# Confounder slots sit *between* the indicator row and the causal row, so the
-# violating edges stay short instead of sweeping across the whole glyph. Right
-# slot = clean anchor (contamination at a non-anchor item), left slot = contaminated
-# anchor (contamination at I0). The pair reads as a mirror image.
+# Confounder slots between the item and causal rows, so the violating edges
+# stay short. Right: contamination at Ij; left: contamination at I0.
 UR <- c(nx =  0.40, ny = 0.38)
 UL <- c(nx = -0.40, ny = 0.38)
 
@@ -97,17 +71,13 @@ EXTRA <- rbindlist(list(
              node = "Uj", nx = UR[1], ny = UR[2], lab = "italic(U)[j]"),
   data.table(scenario = "orthogonal_IUX",
              node = "Uj", nx = UR[1], ny = UR[2], lab = "italic(U)[j]"),
-  # Further out and up than UR: Ik sits at 0.28, and from UR the US -> Ik edge
-  # would be too short to show a shaft.
+  # Further out than UR, so the US -> Ik edge keeps a visible shaft.
   data.table(scenario = "one_confounder",
              node = "US", nx = 0.45, ny = 0.45, lab = "italic(U)[S]"),
   data.table(scenario = "two_more_factors",
              node = c("F1", "F2"), nx = c(0.00, 0.28), ny = ROW[["factor"]],
              lab = c("italic(F)[1]", "italic(F)[2]")),
-  # --- contaminated anchor: the same confounder now hits I0 -----------------
-  # Independent confounders: the contaminated anchor brings its own U0 (left slot),
-  # and every other item keeps its own Uj in the clean-anchor glyph's right slot. The
-  # contaminated-anchor glyph is its clean twin plus U0.
+  # --- contaminated anchor: the clean twin plus the anchor's confounder -----
   data.table(scenario = "orthogonal_IUY_itemAnchor",
              node = c("U0", "Uj"), nx = c(UL[1], UR[1]), ny = c(UL[2], UR[2]),
              lab = c("italic(U)[0]", "italic(U)[j]")),
@@ -116,17 +86,13 @@ EXTRA <- rbindlist(list(
              lab = c("italic(U)[0]", "italic(U)[j]")),
   data.table(scenario = "one_confounder_itemAnchor",
              node = "US", nx = UL[1], ny = UL[2], lab = "italic(U)[S]"),
-  # F1 sits between I0 and Ij because the contaminated anchor keeps loading on the
-  # factor it shares with the rest of its block; F2 stays where the clean-anchor glyph
-  # has it.
+  # F1 between I0 and Ij: the anchor loads on F1 with the rest of its block.
   data.table(scenario = "two_more_factors_itemAnchor",
              node = c("F1", "F2"), nx = c(-0.14, 0.28), ny = ROW[["factor"]],
              lab = c("italic(F)[1]", "italic(F)[2]"))
 ))
 
-# Violating edges between nodes. Straight unless a curve is needed to keep two
-# edges out of the same corridor: at this size a curve costs more legibility
-# than the crossing it avoids.
+# Violating edges between nodes; curved only where two edges would overlap.
 EXTRA_EDGES <- rbindlist(list(
   data.table(scenario = "all_clean",
              from = character(), to = character(), curve = numeric()),
@@ -156,13 +122,9 @@ EXTRA_EDGES <- rbindlist(list(
 ), fill = TRUE)
 EXTRA_EDGES[is.na(curve), curve := 0]
 
-# NOSH violations are covariances between *coefficients*, so they attach to the
-# midpoints of two skeleton edges, not to nodes: a dashed bidirected arc from
-# the Z->X edge to the X->Y edge (A4b), or to an X->I loading (A6b, item NOSH:
-# X->Ij with a clean anchor, X->I0 and X->Ij with a contaminated one).
-# Positive curvature bows right of the direction of travel, so the A4b arc runs
-# below the causal row: above it sits the X <- U -> Y confounder. The arc to
-# X->Ij is straight: it already passes below X, and any curve crosses X.
+# NOSH violations are covariances between coefficients: a dashed arc between
+# the midpoints of Z->X and X->Y (A4b) or an X->I loading (A6b).
+# Positive curvature bows the A4b arc below the causal row, away from U.
 EDGE_ARCS <- rbindlist(list(
   data.table(scenario = "nosh_violated",
              a_from = "Z", a_to = "X", b_from = "X", b_to = "Y",
@@ -175,22 +137,14 @@ EDGE_ARCS <- rbindlist(list(
              curve = c(0.45, 0))
 ))
 
-# A scenario with no entry anywhere would silently draw a clean skeleton, which
-# would be a lie. dag_strip() warns instead.
-# ("all_clean" is deliberately edge-free, so it is named rather than derived.)
-GLYPH_SCENARIOS <- unique(c("all_clean", EXTRA_EDGES$scenario,
-                            EDGE_ARCS$scenario))
-
 # ------------------------------------------------------------------ drawing
-# Trim a segment at both ends so arrowheads clear the node labels. The trim is
-# measured on the page (via GLY$yx), otherwise a vertical edge is cut ~2.5x
-# harder than a horizontal one, and it is capped at pad_frac of the edge so
-# short edges (U -> Y, F -> I) keep a visible shaft.
+# Trim both ends so arrowheads clear the node labels. Measured on the page
+# (GLY$yx) and capped at pad_frac of the edge, so short edges keep a shaft.
 trim_seg <- function(x1, y1, x2, y2, pad1 = GLY$pad, pad2 = GLY$pad,
                      yx = GLY$yx) {
   dx <- x2 - x1
   dy <- (y2 - y1) * yx
-  len <- sqrt(dx^2 + dy^2); len[len == 0] <- 1
+  len <- sqrt(dx^2 + dy^2)
   ux <- dx / len; uy <- dy / len
   cap <- GLY$pad_frac * len
   pad1 <- pmin(pad1, cap); pad2 <- pmin(pad2, cap)
@@ -199,14 +153,12 @@ trim_seg <- function(x1, y1, x2, y2, pad1 = GLY$pad, pad2 = GLY$pad,
 }
 
 build_edges <- function(edges, nodes, kind) {
-  if (is.null(edges) || nrow(edges) == 0) return(NULL)
+  if (nrow(edges) == 0) return(NULL)
   e <- merge(edges, nodes[, .(from = node, x1 = nx, y1 = ny)],
              by = "from", sort = FALSE)
   e <- merge(e, nodes[, .(to = node, x2 = nx, y2 = ny)],
              by = "to", sort = FALSE)
-  cbind(trim_seg(e$x1, e$y1, e$x2, e$y2),
-        data.table(curve = if ("curve" %in% names(e)) e$curve else 0,
-                   kind = kind))
+  cbind(trim_seg(e$x1, e$y1, e$x2, e$y2), curve = e$curve, kind = kind)
 }
 
 # Midpoint of a skeleton edge, used as an arc endpoint.
@@ -216,62 +168,46 @@ edge_mid <- function(nodes, a, b) {
 }
 
 build_arcs <- function(arcs, nodes) {
-  if (nrow(arcs) == 0) return(NULL)
   rbindlist(lapply(seq_len(nrow(arcs)), function(i) {
     a <- edge_mid(nodes, arcs$a_from[i], arcs$a_to[i])
     b <- edge_mid(nodes, arcs$b_from[i], arcs$b_to[i])
-    # No padding: the arrowheads must land ON the two edges.
+    # No trim: the arrowheads land on the two edges.
     cbind(trim_seg(a$x, a$y, b$x, b$y, pad1 = 0, pad2 = 0),
           data.table(curve = arcs$curve[i], kind = "arc"))
   }))
 }
 
 glyph_data <- function(scen_levels) {
-  segs <- list(); nds <- list(); dts <- list()
+  segs <- list(); nds <- list()
   for (i in seq_along(scen_levels)) {
     sc <- scen_levels[i]
     if (is.na(sc)) next                       # empty slot, keeps the grid aligned
     nd <- rbind(NODES, if (sc %in% THREE_ITEMS) ITEMS_3 else ITEMS_2,
                 EXTRA[scenario == sc, .(node, nx, ny, lab, anchor = FALSE)],
                 fill = TRUE)
-    arcs <- build_arcs(EDGE_ARCS[scenario == sc], nd)
     s <- rbindlist(list(
       build_edges(SKELETON, nd, "skeleton"),
       build_edges(EXTRA_EDGES[scenario == sc, .(from, to, curve)], nd,
                   "violation"),
-      arcs
+      build_arcs(EDGE_ARCS[scenario == sc], nd)
     ), fill = TRUE)
-    if (!is.null(s) && nrow(s)) {
-      s[, `:=`(x = x + i, xend = xend + i, scenario = sc)]
-      segs[[length(segs) + 1L]] <- s
-    }
-    # Dots mark where an arc attaches, so it reads as "these two coefficients"
-    # rather than as an arrow that stops in mid-air.
-    if (!is.null(arcs) && nrow(arcs)) {
-      dts[[length(dts) + 1L]] <- data.table(
-        x = i + c(arcs$x, arcs$xend), y = c(arcs$y, arcs$yend))
-    }
-    nds[[length(nds) + 1L]] <- data.table(scenario = sc, node = nd$node,
-                                          x = i + nd$nx,
-                                          y = nd$ny, lab = nd$lab,
-                                          anchor = nd$anchor)
+    segs[[i]] <- s[, `:=`(x = x + i, xend = xend + i)]
+    nds[[i]] <- data.table(node = nd$node, x = i + nd$nx, y = nd$ny,
+                           lab = nd$lab, anchor = nd$anchor)
   }
-  list(segs  = rbindlist(segs, fill = TRUE),
-       nodes = rbindlist(nds, fill = TRUE)[!is.na(lab)],
-       dots  = rbindlist(dts))
+  segs <- rbindlist(segs)
+  # Dots mark where an arc attaches to the two edges.
+  arcs <- segs[kind == "arc"]
+  list(segs  = segs,
+       nodes = rbindlist(nds),
+       dots  = data.table(x = c(arcs$x, arcs$xend), y = c(arcs$y, arcs$yend)))
 }
 
-# x_expand = 0.1 around limits [0.5, k+0.5] reproduces ggplot's discrete default
-# (add = 0.6 around 1..k), which is what makes the strip line up with an
-# untouched boxplot.
+# x_expand = 0.1 matches ggplot's discrete default, so the strip lines up with
+# the figure's x axis.
 dag_strip <- function(scen_levels, k_slots = length(scen_levels),
                       text_size = GLY$node_size, ylim = c(-0.20, 0.98),
                       x_expand = 0.1) {
-  unknown <- setdiff(na.omit(scen_levels), GLYPH_SCENARIOS)
-  if (length(unknown))
-    warning("no glyph defined for: ", paste(unknown, collapse = ", "),
-            " — these cells will show a clean skeleton", call. = FALSE)
-
   g <- glyph_data(scen_levels)
   ar_s <- arrow(length = unit(GLY$head_skel, "in"), type = "closed")
   ar_v <- arrow(length = unit(GLY$head_viol, "in"), type = "closed")
@@ -280,7 +216,6 @@ dag_strip <- function(scen_levels, k_slots = length(scen_levels),
 
   # geom_curve takes one curvature per layer, so curved edges are split by it.
   by_curve <- function(d, ...) {
-    if (is.null(d) || nrow(d) == 0) return(NULL)
     lapply(split(d, d$curve), function(gg)
       geom_curve(data = gg, aes(x, y, xend = xend, yend = yend),
                  curvature = gg$curve[1], ...))
@@ -295,9 +230,8 @@ dag_strip <- function(scen_levels, k_slots = length(scen_levels),
     by_curve(g$segs[kind == "arc"],
              arrow = ar_b, linewidth = GLY$arc_lw, color = GLY$viol_col,
              linetype = "22") +
-    (if (nrow(g$dots)) geom_point(data = g$dots, aes(x, y), size = 0.55,
-                                  color = GLY$viol_col)) +
-    # White label boxes double as masks, so edges never run through a symbol.
+    geom_point(data = g$dots, aes(x, y), size = 0.55, color = GLY$viol_col) +
+    # White label boxes mask the edges behind the symbols.
     geom_label(data = g$nodes[anchor == FALSE], aes(x, y, label = lab),
                parse = TRUE, size = text_size, fill = "white",
                linewidth = 0, label.padding = unit(0.7, "pt"),
@@ -313,56 +247,21 @@ dag_strip <- function(scen_levels, k_slots = length(scen_levels),
     theme(plot.margin = margin(2, 2, 0, 2))
 }
 
-# Hang a glyph strip above an existing scenario-axis figure. `scenarios` must
-# match the figure's x factor levels, in order.
-#
-#   heights      strip : figure. Raise the first number for bigger glyphs.
-#   x_expand     0.1 for an untouched discrete axis (ggplot's default), 0 if
-#                the figure sets expansion(add = 0.5) itself.
-#   trim_margin  drop the figure's top margin so the strip sits close.
-#   labels_top   move the scenario names to the top axis, directly under the
-#                glyphs, so names and DAGs sit together. The figure's own x
-#                scale (labels included) is kept; only its position changes.
-#   position     "top" (strip above the figure) or "bottom" (strip below it,
-#                scenario names on the bottom axis just above the glyphs).
-#                `heights` is always given strip-first; it is flipped for you.
-attach_dag_strip <- function(p, scenarios, heights = c(1, 2.8),
-                             x_expand = 0.1, trim_margin = TRUE,
-                             labels_top = TRUE, position = c("top", "bottom")) {
-  position <- match.arg(position)
-  if (position == "bottom") {
-    if (trim_margin)
-      p <- p + theme(plot.margin = margin(5.5, 5.5, 0, 5.5))
-    p <- p + theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 1,
-                                              size = 9, lineheight = 0.95,
-                                              margin = margin(t = 4)))
-    return(p / dag_strip(scenarios, x_expand = x_expand) +
-             plot_layout(heights = rev(heights), guides = "collect") &
-             theme(legend.position = "top", legend.direction = "horizontal",
-                   legend.margin = margin(b = 2)))
-  }
-  if (trim_margin)
-    p <- p + theme(plot.margin = margin(0, 5.5, 5.5, 5.5))
-  if (labels_top) {
-    sx <- p$scales$get_scales("x")
-    sx <- if (is.null(sx)) scale_x_discrete() else sx$clone()
-    sx$position <- "top"
-    # Horizontal, centred names; no axis line or ticks up there, so the names
-    # read as captions of the glyphs rather than as an axis of the boxplot.
-    p <- suppressMessages(p + sx) +
-      theme(axis.text.x.top  = element_text(angle = 0, hjust = 0.5, vjust = 0,
+# Glyph strip below a scenario-axis figure, legend on top. `scenarios` = the
+# figure's x levels, in order; heights = strip : figure.
+attach_dag_strip <- function(p, scenarios, heights) {
+  p <- p + theme(plot.margin = margin(5.5, 5.5, 0, 5.5),
+                 axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 1,
                                             size = 9, lineheight = 0.95,
-                                            margin = margin(b = 4)),
-            axis.line.x.top  = element_blank(),
-            axis.ticks.x.top = element_blank())
-  }
-  dag_strip(scenarios, x_expand = x_expand) / p +
-    plot_layout(heights = heights)
+                                            margin = margin(t = 4)))
+  p / dag_strip(scenarios) +
+    plot_layout(heights = rev(heights), guides = "collect") &
+    theme(legend.position = "top", legend.direction = "horizontal",
+          legend.margin = margin(b = 2))
 }
 
 # ------------------------------------------------------------------- the key
-# Standalone legend, for the glyph sheet or a figure that needs it inline. In
-# the manuscript this belongs in the caption instead.
+# Standalone legend for the glyph sheet.
 glyph_key <- function(text_size = 2.5) {
   seg <- function(x, ...) annotate("segment", x = x, xend = x + 0.055,
                                    y = 0.5, yend = 0.5, ...)

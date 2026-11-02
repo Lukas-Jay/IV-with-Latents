@@ -1,6 +1,6 @@
 # IV with Latents
 
-Simulation code for the paper **"Identifying Causal Effects with Latent Treatments: Psychological Experiments as Instrumental Variable Designs"** (Lukas Junker).
+Simulation code for the paper **"Identifying Causal Effects with Latent Treatments: Psychological Experiments as Instrumental Variable Designs"**.
 
 The paper treats a psychological experiment as a randomized encouragement design. The manipulation `Z` is an instrument for a latent treatment `X`, which is measured by survey items, and `X` acts on an outcome `Y`. The simulation compares three estimators of the effect of `X` on `Y` across scenarios that each violate one assumption:
 

@@ -4,7 +4,7 @@
 #
 # fit_factor_scores() is step 1. Its scores are also used by
 # other_estimators.R, so each CFA is fitted only once per dataset.
-# two_step_fa_iv() is step 2 with Bartlett scores, the version reported.
+# two_step_fa_iv() is step 2 with Bartlett scores.
 library(lavaan)
 library(ivreg)
 library(sandwich)
@@ -29,8 +29,8 @@ fit_factor_scores <- function(data, metric) {
     std_lv <- TRUE
   }
 
-  # ML (lavaan's default): only the scores are used, never the SEs or the fit
-  # statistic (test = "none"); bad.marker.crit = 0 keeps I0 as the marker even
+  # We use ML, because only the scores are used, not the SE
+  # bad.marker.crit = 0 keeps I0 as the marker even 
   # when lavaan judges it a poor item
   fit <- cfa(model, data = data, std.lv = std_lv, test = "none",
              bad.marker.crit = 0)
@@ -40,8 +40,7 @@ fit_factor_scores <- function(data, metric) {
   if (any(pe$est[pe$op == "~~" & pe$lhs == pe$rhs] < 0)) return(NULL)
 
   # Bartlett scores are conditionally unbiased given the factor. Regression
-  # scores (lavPredict's default) shrink toward the mean, which inflates the
-  # IV ratio by about 1 / factor determinacy.
+  # scores are not
   list(Bartlett   = as.vector(lavPredict(fit, method = "Bartlett")),
        regression = as.vector(lavPredict(fit, method = "regression")))
 }

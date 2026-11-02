@@ -17,9 +17,8 @@ long_n250  <- readRDS("sim_res/long_n250.rds")
 long_n2000 <- readRDS("sim_res/long_n2000.rds")
 
 # --- Summaries -----------------------------------------------------------------
-# Failed replications (NA estimates) are left out of every summary. rel_*:
-# bias relative to each replication's truth, used where the truth varies across
-# replications (the contaminated-anchor designs on the I0 metric).
+# Bias, RMSE and coverage per scenario x estimator x scale, without failed
+# replications. rel_*: relative to each replication's truth.
 summarise_long <- function(long) {
   long[, .(
     bias            = mean(bias, na.rm = TRUE),
@@ -42,7 +41,7 @@ fwrite(summ_n2000, "tables/summary_n2000.csv")
 # --- Failure counts --------------------------------------------------------------
 # A replication fails for an estimator when its I0 or SD estimate is NA: SEM-IV
 # did not converge; for two-step FA-IV a CFA did not converge or returned a
-# negative variance. Only the 14 reported scenarios count.
+# negative variance.
 reported_scenarios <- c(names(scenario_tex_names), names(item_anchor_tex_names))
 
 fail_by_scenario <- function(long) {

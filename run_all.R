@@ -11,7 +11,7 @@ source("functions/run_simulation.R")
 if (FALSE) {
   
 N_ITER    <- 10000 # replications per sample size
-N_WORKERS <- 10    # parallel R sessions
+N_WORKERS <- 8    # parallel R sessions
 
 # progress bar in the console
 handlers(global = TRUE)
